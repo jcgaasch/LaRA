@@ -1,0 +1,18 @@
+Package: LaRA
+Type: Package
+Title: Latent Regression Analysis
+Version: 0.1
+Imports:
+    mvtnorm,
+    ucminf,
+    numDeriv,
+    rpart
+Author: Jean-Christoph Gaasch
+Maintainer: Jean-Christoph Gaasch <christoph.gaasch@lifbi.de>
+Description: Bayesian estimation of latent trait distributions considering 
+    hierarchical structures and partially missing covariate data.
+Depends: R (>= 3.3.0)
+License: GPL-3
+Encoding: UTF-8
+LazyData: true
+RoxygenNote: 6.0.1
