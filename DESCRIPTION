@@ -1,7 +1,7 @@
 Package: LaRA
 Type: Package
 Title: Latent Regression Analysis
-Version: 0.1
+Version: 0.1.0
 Imports:
     mvtnorm,
     ucminf,

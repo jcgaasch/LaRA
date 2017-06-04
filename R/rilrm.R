@@ -1,6 +1,6 @@
-#' Multigroup Latent Regression Item Response Model
+#' Random Intercept Latent Regression Item Response Model
 #'
-#' Estimate multigroup latent regression models for binary and ordinal item response data
+#' Estimate random intercept latent regression models for binary and ordinal item response data
 #' considering partially missing covariate data.
 #' @param Y data frame containing item responses. They can be binary or ordinal items. The
 #' responses must be coded starting at \code{0} or as \code{NA}. Rows of \code{Y} correspond to
@@ -12,9 +12,8 @@
 #' variables and contain missing values coded as \code{NA}. Rows of \code{X} correspond to
 #' persons and columns correspond to covariates. With \code{X} set to NULL (default) an
 #' interecpt-only model will be estimated.
-#' @param S integer vector of individual group membership. A multigroup model with \code{S}
-#' stratifying the sample will be estimated. The most simple latent regression item response
-#' model without grouping results from \code{S} set to \code{NULL} (default).
+#' @param S integer vector of individual cluster membership. A random intercept model with
+#' \code{S} stratifying the sample will be estimated.
 #' @param itermcmc number of MCMC iterations.
 #' @param burnin number of burnin iterations.
 #' @param thin thinning interval, i.e., retain only every \code{thin}th iteration (if argument
@@ -27,16 +26,17 @@
 #' @param cartctrl2 complexity parameter. Any CART split that does not decrease the overall
 #' lack of fit by a factor of \code{control2} is not attempted during covariates imputation
 #' cycles.
-#' @details \code{mglrm} uses a fully Bayesian estimation approach. Independent conjugate prior
+#' @details \code{rilrm} uses a fully Bayesian estimation approach. Independent conjugate prior
 #' distributions are chosen to develop a Metropolis-within-Gibbs sampling algorithm based on
 #' the device of data augmentation (Tanner & Wong, 1987). The function generates a sample from
 #' the posterior distribution of a one dimensional two-parameter normal ogive IRT model
-#' (Albert, 1992) \deqn{y_{ij}^*=\alpha_j \theta_i - \beta_j + \varepsilon_{ij}} including a
-#' (multivariate) regression equation of person level predictors on the mean vector of latent
-#' abilities \deqn{\theta_i=x_i\gamma_{S_i} + e_i.} Regression parameters are allowed to vary
-#' across observed groups. Partially observed person-level covariates are imputed in each
-#' sampling iteration. Sequential CART (Burgette & Reiter, 2010) are utilized as approximations
-#' to the full conditional distributions of missing values in \code{X}.
+#' (Albert, 1992) \deqn{y_{cij}^*=\alpha_j \theta_{ci} - \beta_j + \varepsilon_{cij}} including
+#' a (multivariate) regression equation of a cluster level random intercept and person level
+#' predictors on the mean vector of latent abilities
+#' \deqn{\theta_{ci}=\omega_c + x_{ci}\gamma + e_{ci}.} This corresponds to the most basic
+#' multilevel specification (Fox & Glas, 2001). Partially observed person-level covariates are
+#' imputed in each sampling iteration. Sequential CART (Burgette & Reiter, 2010) are utilized
+#' as approximations to the full conditional distributions of missing values in \code{X}.
 #' @return list with elements \code{MCMCdraws} and \code{M-Hacc} containing a list of posterior
 #' samples matrices (rows correspond to iterations and columns to parameters) and, if
 #' estimated, a vector of Metropolis-Hastings acceptance rates of category cutoff parameters
@@ -46,33 +46,31 @@
 #' @references Burgette, L. F., & Reiter, J. P. (2010). Multiple imputation for missing data
 #' via sequential regression trees. \emph{American Journal of Epidemiology}, \emph{172}(9),
 #' 1070-1076.
+#' @references Fox, J.-P., & Glas, C. A. W. (2001). Bayesian estimation of a multilevel irt
+#' model using Gibbs sampling. \emph{Psychometrika}, \emph{66}(2), 271-288.
 #' @references Tanner, M. A., & Wong, W. H. (1987). The calculation of posterior distributions
 #' by data augmentation. \emph{Journal of the American Statistical Association},
 #' \emph{82}(398), 528-549.
 #' @examples
 #' ## prepare data input
-#' data(simdata_2mglrm)
-#' Y <- simdata_2mglrm[, grep("Y", names(simdata_2mglrm), value = TRUE)]
-#' X <- simdata_2mglrm[, grep("X", names(simdata_2mglrm), value = TRUE)]
+#' data(simdata_40rilrm)
+#' Y <- simdata_40rilrm[, grep("Y", names(simdata_40rilrm), value = TRUE)]
+#' X <- simdata_40rilrm[, grep("X", names(simdata_40rilrm), value = TRUE)]
 #'
 #' ## estimation setup: MCMC chains of length 20 with 4 initial burn-in samples
 #' ## for testing purposes (for your applications itermcmc > 10000 needed)
 #' ##
-#' ## not considering grouping
-#' results_model1 <- mglrm(Y = Y, X = X, itermcmc = 10, burnin = 2, thin = 2)
-#'
-#' ## considering grouping
-#' results_model2 <- mglrm(Y = Y, X = X, S = simdata_2mglrm$S, itermcmc = 10, burnin = 2, thin = 2)
+#' results <- rilrm(Y = Y, X = X, S = simdata_40rilrm$S, itermcmc = 10, burnin = 2, thin = 2)
 #' @importFrom stats model.matrix runif rgamma rnorm pnorm qnorm predict
 #' @importFrom mvtnorm rmvnorm dmvnorm rmvt dmvt
 #' @importFrom ucminf ucminf
 #' @importFrom rpart rpart rpart.control
 #' @export
-mglrm <- function(
+rilrm <- function(
   Y,
   Ymis = c("ignore", "incorrect"),
   X = NULL,
-  S = NULL,
+  S,
   itermcmc,
   burnin,
   thin = 1,
@@ -96,6 +94,19 @@ mglrm <- function(
   if(match.arg(Ymis) == "incorrect"){
     Y[!YOBS] <- 0
   }
+  suS <- sort(unique(S))
+  CL <- length(unique(suS))
+  for(cl in 1:CL){
+    S[S == suS[cl]] <- cl
+  }
+  Ncl <- table(S)
+  Dcl <- matrix(0, nrow = N, ncol = CL)
+  for(i in 1:N){
+    Dcl[i, S[i]] <- 1
+  }
+  DD <- crossprod(Dcl)
+  OMEGA <- rnorm(CL)
+  OMEGAi <- Dcl%*%OMEGA
   THETA <- rnorm(N)
   if(is.null(X)){
     XDM <- matrix(rep(1, N))
@@ -108,30 +119,17 @@ mglrm <- function(
       for(k in xmisord){
         X[XMIS[, k], k] <- sample(X[XOBS[, k], k], sum(XMIS[, k]), replace = TRUE)
       }
-      if(is.null(S)){
-        X2IMP <- data.frame(X, THETA)
-        Xcolsomit <- ncol(X2IMP)
-      } else {
-        X2IMP <- data.frame(X, THETA, S = as.factor(S))
-        Xcolsomit <- c(ncol(X2IMP), ncol(X2IMP) - 1)
-      }
+      X2IMP <- data.frame(X, THETA, OMEGAi)
+      Xcolsomit <- c(ncol(X2IMP), ncol(X2IMP) - 1)
     }
     XDM <- model.matrix(~., X)
   }
   KX <- ncol(XDM)
   XX <- crossprod(XDM)
-  if(is.null(S)){
-    S <- rep(1, N)
-  }
-  G <- length(unique(S))
-  Ng <- table(S)
-  INDG <- matrix(nrow = G, ncol = N)
-  for(g in 1:G){
-    INDG[g, ] <- ifelse(S == g, TRUE, FALSE)
-  }
   YLAT <- matrix(0, nrow = N, ncol = J)
-  GAMMA <- matrix(0, nrow = KX, ncol = G)
-  SIGMA2 <- rep(1, G)
+  GAMMA <- matrix(rep(0, KX), ncol = 1)
+  SIGMA2 <- 1
+  UPSILON2 <- 1
   ALPHA <- rep(1, J)
   BETA <- rep(0, J)
   XI <- rbind(ALPHA, BETA)
@@ -149,19 +147,25 @@ mglrm <- function(
       c(-1e+05, 0, cumsum(exp(rep(0, x - 2))), 1e+05)
     }
   })
-  Gamma <- matrix(0, nrow = itermcmc, ncol = G*KX)
-  Sigma2 <- matrix(0, nrow = itermcmc, ncol = G)
+  Omega <- matrix(0, nrow = itermcmc, ncol = CL)
+  Theta <- matrix(0, nrow = itermcmc, ncol = N)
+  Gamma <- matrix(0, nrow = itermcmc, ncol = KX)
+  Sigma2 <- matrix(0, nrow = itermcmc, ncol = 1)
+  Upsilon2 <- matrix(0, nrow = itermcmc, ncol = 1)
   Alpha <- matrix(0, nrow = itermcmc, ncol = J)
   Beta <- matrix(0, nrow = itermcmc, ncol = J)
   Kappa <- matrix(0, nrow = itermcmc, ncol = sum(QMI2))
   accTau <- rep(0, J)
   names(accTau) <- colnames(Y)
-  Theta <- matrix(0, nrow = itermcmc, ncol = N)
   PrecGamma0 <- solve(100*diag(KX))
   shapeSigma20 <- 1
   scaleSigma20 <- 1
   scaleSigma20inv <- 1/scaleSigma20
-  shapeSigma2 <- Ng/2 + shapeSigma20
+  shapeSigma2 <- N/2 + shapeSigma20
+  shapeUpsilon20 <- 1
+  scaleUpsilon20 <- 1
+  scaleUpsilon20inv <- 1/scaleUpsilon20
+  shapeUpsilon2 <- CL/2 + shapeUpsilon20
   PrecXi0 <- solve(100*diag(2))
   # MCMC
   for(ii in 1:itermcmc){
@@ -208,45 +212,56 @@ mglrm <- function(
       }
       # (4)
       for(i in 1:N){
-        vartheta <- 1/(crossprod(ALPHA[YOBS[i, ]]) + 1/SIGMA2[S[i]])
+        vartheta <- 1/(crossprod(ALPHA[YOBS[i, ]]) + 1/SIGMA2)
         mutheta <- vartheta*(crossprod(ALPHA[YOBS[i, ]], YLAT[i, YOBS[i,]] + BETA[YOBS[i, ]]) +
-          XDM[i, ]%*%GAMMA[, S[i]]/SIGMA2[S[i]])
+          (OMEGAi[i] + XDM[i, ]%*%GAMMA)/SIGMA2)
         THETA[i] <- rnorm(1, mutheta, sqrt(vartheta))
       }
-      # (5), (6)
-      for (g in 1:G) {
-        Covgamma <- solve(crossprod(XDM[INDG[g, ], , drop = FALSE])/SIGMA2[g] + PrecGamma0)
-        mugamma <- Covgamma%*%crossprod(XDM[INDG[g, ], , drop = FALSE], THETA[INDG[g, ]])/
-          SIGMA2[g]
-        GAMMA[, g] <- rmvnorm(1, mugamma, Covgamma)
-        scaleSigma2 <- 0.5*crossprod(THETA[INDG[g, ]] -
-          XDM[INDG[g, ], , drop = F]%*%GAMMA[, g]) + scaleSigma20inv
-        SIGMA2[g] <- 1/rgamma(1, shape = shapeSigma2[g], rate = scaleSigma2)
-      }
+      # (5)
+      Covgamma <- solve(XX/SIGMA2 + PrecGamma0)
+      mugamma <- Covgamma%*%crossprod(XDM, THETA - OMEGAi)/SIGMA2
+      GAMMA <- t(rmvnorm(1, mugamma, Covgamma))
+      XGAMMA <- XDM%*%GAMMA
+      # (6)
+      scaleSigma2 <- 0.5*crossprod(THETA - OMEGAi - XGAMMA) + scaleSigma20inv
+      SIGMA2 <- 1/rgamma(1, shape = shapeSigma2, rate = scaleSigma2)
+      # (7)
+      Covri <- solve(DD/SIGMA2 + (1/UPSILON2)*diag(CL))
+      muri <- Covri%*%(crossprod(Dcl, THETA - XGAMMA)/SIGMA2)
+      OMEGA <- c(rmvnorm(1, muri, Covri))
+      OMEGAi <- Dcl%*%OMEGA
+      # (8)
+      scaleUpsilon2 <- 0.5*crossprod(OMEGA) + scaleUpsilon20inv
+      UPSILON2 <- 1/rgamma(1, shape = shapeUpsilon2, rate = scaleUpsilon2)
       if(ANYXMIS){
-        # (7)
+        # (9)
         X2IMP$THETA <- THETA
+        X2IMP$OMEGAi <- OMEGAi
         X <- seqcart(X2IMP, xmisord, XOBS, XMIS, cartctrl1, cartctrl2)
         X <- X[, -Xcolsomit]
         XDM <- model.matrix(~., X)
         XX <- crossprod(XDM)
       }
     }
-    Gamma[ii, ] <- c(GAMMA)
+    Omega[ii, ] <- OMEGA
+    Theta[ii, ] <- THETA
+    Gamma[ii, ] <- GAMMA
     Sigma2[ii, ] <- SIGMA2
+    Upsilon2[ii, ] <- UPSILON2
     Alpha[ii, ] <- ALPHA
     Beta[ii, ] <- BETA
     Kappa[ii, ] <- unlist(lapply(KAPPA[!ITEMBIN], function(x){
       return(x[-c(1, 2, length(x))])
     }))
-    Theta[ii, ] <- THETA
   }
   bi <- 1:burnin
-  out <- list("MCMCdraws" = list("Gamma" = Gamma[-bi, ],
-    "Sigma2" = Sigma2[-bi, ], "Alpha" = Alpha[-bi, ],
-    "Beta" = Beta[-bi, ], "Kappa" = Kappa[-bi, ],
-    "Theta" = Theta[-bi, ]),
-    "M-Hacc" = accTau[!ITEMBIN]/(thin*itermcmc - thin*burnin))
+  out <- list("MCMCdraws" = list("Omega" = Omega[-bi, ],
+    "Theta" = Theta[-bi, ], "Gamma" = Gamma[-bi, ],
+    "Sigma2" = Sigma2[-bi, ], "Upsilon2" = Upsilon2[-bi, ],
+    "Alpha" = Alpha[-bi, ], "Beta" = Beta[-bi, ],
+    "Kappa" = Kappa[-bi, ]),
+    "M-Hacc" = accTau[!ITEMBIN]/(thin*itermcmc - thin*burnin)
+  )
   return(out)
 
 }
