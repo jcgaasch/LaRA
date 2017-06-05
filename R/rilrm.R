@@ -255,11 +255,9 @@ rilrm <- function(
     }))
   }
   bi <- 1:burnin
-  out <- list("MCMCdraws" = list("Omega" = Omega[-bi, ],
-    "Theta" = Theta[-bi, ], "Gamma" = Gamma[-bi, ],
-    "Sigma2" = Sigma2[-bi, ], "Upsilon2" = Upsilon2[-bi, ],
-    "Alpha" = Alpha[-bi, ], "Beta" = Beta[-bi, ],
-    "Kappa" = Kappa[-bi, ]),
+  out <- list("MCMCdraws" = list("Omega" = Omega[-bi, ], "Theta" = Theta[-bi, ],
+    "Gamma" = Gamma[-bi, ], "Sigma2" = Sigma2[-bi, ], "Upsilon2" = Upsilon2[-bi, ],
+    "Alpha" = Alpha[-bi, ], "Beta" = Beta[-bi, ], "Kappa" = Kappa[-bi, ]),
     "M-Hacc" = accTau[!ITEMBIN]/(thin*itermcmc - thin*burnin)
   )
   return(out)

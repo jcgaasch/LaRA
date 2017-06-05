@@ -62,7 +62,8 @@
 #' results_model1 <- mglrm(Y = Y, X = X, itermcmc = 10, burnin = 2, thin = 2)
 #'
 #' ## considering grouping
-#' results_model2 <- mglrm(Y = Y, X = X, S = simdata_2mglrm$S, itermcmc = 10, burnin = 2, thin = 2)
+#' results_model2 <- mglrm(Y = Y, X = X, S = simdata_2mglrm$S, itermcmc = 10, burnin = 2,
+#'   thin = 2)
 #' @importFrom stats model.matrix runif rgamma rnorm pnorm qnorm predict
 #' @importFrom mvtnorm rmvnorm dmvnorm rmvt dmvt
 #' @importFrom ucminf ucminf
@@ -242,11 +243,9 @@ mglrm <- function(
     Theta[ii, ] <- THETA
   }
   bi <- 1:burnin
-  out <- list("MCMCdraws" = list("Gamma" = Gamma[-bi, ],
-    "Sigma2" = Sigma2[-bi, ], "Alpha" = Alpha[-bi, ],
-    "Beta" = Beta[-bi, ], "Kappa" = Kappa[-bi, ],
-    "Theta" = Theta[-bi, ]),
-    "M-Hacc" = accTau[!ITEMBIN]/(thin*itermcmc - thin*burnin))
+  out <- list("MCMCdraws" = list("Theta" = Theta[-bi, ]), "Gamma" = Gamma[-bi, ],
+    "Sigma2" = Sigma2[-bi, ], "Alpha" = Alpha[-bi, ], "Beta" = Beta[-bi, ],
+    "Kappa" = Kappa[-bi, ], "M-Hacc" = accTau[!ITEMBIN]/(thin*itermcmc - thin*burnin))
   return(out)
 
 }

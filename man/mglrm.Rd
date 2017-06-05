@@ -78,7 +78,8 @@ X <- simdata_2mglrm[, grep("X", names(simdata_2mglrm), value = TRUE)]
 results_model1 <- mglrm(Y = Y, X = X, itermcmc = 10, burnin = 2, thin = 2)
 
 ## considering grouping
-results_model2 <- mglrm(Y = Y, X = X, S = simdata_2mglrm$S, itermcmc = 10, burnin = 2, thin = 2)
+results_model2 <- mglrm(Y = Y, X = X, S = simdata_2mglrm$S, itermcmc = 10, burnin = 2,
+  thin = 2)
 }
 \references{
 Albert, J. H. (1992). Bayesian estimation of normal ogive item response curves
