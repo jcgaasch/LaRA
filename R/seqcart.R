@@ -19,8 +19,12 @@ seqcart <- function(
     leafmis <- predict(tree, Xmis, "vector")
     dataimp[INDMIS[, k], k] <- sapply(leafmis, function(x){
       donorpool <- yobs[leafdonor == x]
-      di <- sort(runif(length(donorpool) - 1))
-      obs <- sample(x = donorpool, size = 1, prob = (c(di, 1) - c(0, di)))
+      if(length(donorpool) == 1){
+        obs <- donorpool
+      }else{
+        di <- sort(runif(length(donorpool) - 1))
+        obs <- sample(x = donorpool, size = 1, prob = (c(di, 1) - c(0, di)))
+      }
       return(obs)
     })
   }

@@ -1,3 +1,10 @@
+# LaRA 0.1.1
+
+## Bug fixes
+
+* Considering donor pool with only one element in `seqcart()`
+* Updated documentation
+
 # LaRA 0.1.0
 
 ## New features
