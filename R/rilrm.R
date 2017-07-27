@@ -84,6 +84,7 @@ rilrm <- function(
   YPL2 <- Y + 2
   N <- nrow(Y)
   J <- ncol(Y)
+  Jinv <- 1/J
   Q <- apply(Y, 2, function(x){
     length(unique(x[!is.na(x)]))
   })
@@ -187,7 +188,7 @@ rilrm <- function(
           XI[, j] <- rmvnorm(1, muitem, Covitem)
         }
       }
-      ALPHA <- XI[1, ]*(1/prod(XI[1, ]))^(1/J)
+      ALPHA <- XI[1, ]*(1/prod(XI[1, ]))^Jinv
       BETA <- XI[2, ] - sum(XI[2, ])/J
       # (3)
       for(j in POSITEMORD){

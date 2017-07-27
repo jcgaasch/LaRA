@@ -30,7 +30,7 @@ LaRA relies on some routines from other R packages, where the latest CRAN versio
 Usage
 -----
 
-Imputation of five plausible values with the multigroup dataset.
+Imputation of five plausible values with the multigroup dataset:
 
 ``` r
 library(LaRA)
