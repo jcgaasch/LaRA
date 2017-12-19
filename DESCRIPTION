@@ -8,7 +8,7 @@ Imports:
     numDeriv,
     rpart
 Author: Jean-Christoph Gaasch
-Maintainer: Jean-Christoph Gaasch <christoph.gaasch@lifbi.de>
+Maintainer: Anna Scharl <anna.scharl@lifbi.de>
 Description: Bayesian estimation of latent trait distributions considering 
     hierarchical structures and partially missing covariate data.
 Depends: R (>= 3.3.0)
