@@ -101,6 +101,7 @@ mglrm <- function(
   THETA <- rnorm(N)
   if(is.null(X)){
     XDM <- matrix(rep(1, N))
+    ANYXMIS <- FALSE
   } else {
     ANYXMIS <- any(is.na(X))
     if(ANYXMIS){
